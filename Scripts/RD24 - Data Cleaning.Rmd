@@ -73,6 +73,7 @@ imputed_data <- imputed_data %>%
 
 ```{r}
 write_csv(imputed_data, "../Data/cleaned_training.csv")
+
 ```
 
 ## Preprocessing
@@ -82,12 +83,14 @@ refined_data <- imputed_data %>%
   group_by(standardized_operator_name) %>% 
   summarise(avg_peak_rate = mean(OilPeakRate)) %>% 
   inner_join(imputed_data) %>% 
-  select(-standardized_operator_name) %>% 
+  select(-c(standardized_operator_name, OilPeakRate)) %>% 
   mutate(value = 1) %>% spread(ffs_frac_type, value,  fill = 0) %>% # One-Hot Encoding
   mutate(value = 1) %>% spread(relative_well_position, value,  fill = 0) %>% 
   mutate(value = 1) %>% spread(batch_frac_classification, value,  fill = 0) %>% 
   mutate(value = 1) %>% spread(well_family_relationship, value,  fill = 0) %>% 
   mutate(across(everything(), ~(.x - mean(.x)) / sd(.x)))
+
+refined_data <- cbind(refined_data, imputed_data$OilPeakRate)
 ```
 
 ## Exporting Preprocessed CSV
