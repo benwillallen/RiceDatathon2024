@@ -23,7 +23,17 @@ na_count <- as.data.frame(sapply(oil_data, function(y) sum(is.na(y))))
 colnames(na_count) <- c("NA_Count")
 ggplot(data=na_count, mapping=aes(x=rownames(na_count), y=NA_Count)) +
   geom_bar(stat="identity") + theme(axis.text.x=element_text(angle=90))
+
+ggplot(data=na_count, mapping=aes(x=rownames(na_count), y=NA_Count/nrow(oil_data),
+                                  fill=NA_Count/nrow(oil_data))) +
+  geom_bar(stat="identity") +
+  scale_y_continuous(labels=seq(0, 1, 0.1), breaks=seq(0, 1, 0.1)) +
+  scale_fill_binned(name="Missing >90% of Rows?", breaks=seq(0, 1, 0.2), type="viridis") +
+  labs(title="Percent of Data Missing by Column", x="", y="% of Rows Missing") +
+  theme_bw() + theme(axis.text.x=element_text(angle=90))
 ```
+
+The variables `average_frac_fluid_per_stage`, `average_proppant_per_stage`, `average_stage_length`, and `number_of_stages` are all missing well over 80% of their data, and can likely be removed without harming predictive capabilities.
 
 ## Distributions
 
@@ -38,5 +48,10 @@ table(oil_data$ffs_frac_type)
 table(oil_data$relative_well_position)
 table(oil_data$batch_frac_classification)
 table(oil_data$well_family_relationship)
+table(oil_data$frac_type)
+```
+
+```{r}
+cor(oil_data$frac_type, oil_data$OilPeakRate)
 ```
 
