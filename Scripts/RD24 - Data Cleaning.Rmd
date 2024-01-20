@@ -43,6 +43,7 @@ Imputation is done using the MICE (Multiple Imputation by Chained Equations) app
 imputation_epoch1 <- mice(oil_data, m=5, method="rf", maxit=5, seed=24)
 imputed_data <- complete(imputation_epoch1, 1)
 imputed_data$ffs_frac_type <- ifelse(is.na(imputed_data$ffs_frac_type), "Undefined", imputed_data$ffs_frac_type)
+imputed_data$standardized_operator_name <- as.character(imputed_data$standardized_operator_name)
 
 # Check no more missing values
 as.data.frame(sapply(imputed_data, function(y) sum(is.na(y))))
