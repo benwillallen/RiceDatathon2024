@@ -1,0 +1,47 @@
+---
+title: "RD24 - Data Cleaning"
+author: "Benjamin Allen"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(mice)
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Importing Data
+
+```{r}
+oil_data <- read_csv("../Data/training.csv")
+```
+
+
+## Removing Rows & Columns
+
+```{r}
+oil_data <- oil_data %>% 
+  filter(!is.na(OilPeakRate)) %>% # Remove rows where response is missing
+  select(-c(average_frac_fluid_per_stage, average_stage_length,
+            average_proppant_per_stage, number_of_stages)) %>% # Remove columns with >90% missing rows
+  mutate(horizontal_dist_x = abs(horizontal_midpoint_x - horizontal_toe_x),
+         horizontal_dist_y = abs(horizontal_midpoint_y - horizontal_toe_y),
+         horizontal_dist = sqrt((horizontal_midpoint_x - horizontal_toe_x)^2 + (horizontal_midpoint_y - horizontal_toe_y)^2)) %>% # Create horizontal distance variables
+  # Remove extra X and Y variables as they don't add much new info
+  # Remove frac_type as it is the same for all rows and the id variables
+  # Remove frac_fluid_proppant_ratio as the inverse ratio is also in the dataset
+  select(-c(bh_x, bh_y, horizontal_midpoint_x, horizontal_midpoint_y, horizontal_toe_x, horizontal_toe_y,
+            frac_type, ...1, pad_id, frac_fluid_to_proppant_ratio)) 
+```
+
+## Imputing Missing Data
+
+Imputation is done using the MICE (Multiple Imputation by Chained Equations) approach as this is a well-proven technique for doing imputation for multiple columns.
+
+```{r}
+imputation_epoch1 <- mice(oil_data, m=5, method="rf", maxit=5, seed=24)
+test_data <- complete(imputation_epoch1, 1)
+na_count <- as.data.frame(sapply(test_data, function(y) sum(is.na(y))))
+```
+
