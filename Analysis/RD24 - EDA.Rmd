@@ -70,6 +70,7 @@ Based on this we can also remove the `frac_type` variable as it is the same for 
 ```{r}
 ggplot(data=oil_data, mapping=aes(x=ffs_frac_type, y=OilPeakRate, fill=ffs_frac_type)) +
   geom_violin()
+ggsave("./Visuals/ffs_frac_type_violinplot.png")
 
 test <- oil_data %>% 
   filter(!is.na(frac_fluid_to_proppant_ratio) & !is.na(proppant_to_frac_fluid_ratio)) %>% 
@@ -85,4 +86,3 @@ ggplot(data=oil_data, mapping=aes(x=surface_x, y=surface_y, color=standardized_o
 ggplot(data=oil_data, mapping=aes(x=surface_x, y=surface_y, color=OilPeakRate)) +
   geom_point() + scale_color_distiller(palette = "Spectral")
 ```
-

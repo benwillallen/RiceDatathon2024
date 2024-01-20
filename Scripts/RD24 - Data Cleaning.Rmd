@@ -51,6 +51,6 @@ as.data.frame(sapply(imputed_data, function(y) sum(is.na(y))))
 ## Exporting Cleaned CSV
 
 ```{r}
-write_csv(imputed_data)
+write_csv(imputed_data, "../Data/cleaned_training.csv")
 ```
 
