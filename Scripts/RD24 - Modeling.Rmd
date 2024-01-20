@@ -13,27 +13,32 @@ library(ModelMetrics)
 library(fastshap)
 library(shapviz)
 library(patchwork)
+library(caret)
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ## Importing Data
 
 ```{r}
-oil_data <- read_csv("../Data/cleaned_training.csv")
+oil_data <- read_csv("../Data/preprocessed_training.csv")
 ```
-
-## Preprocessing
-
-
 
 ## XGBoost Model
 
 ```{r}
-train_X <- as.matrix(oil_data[,-17])
+train_X <- as.matrix(oil_data[,-16])
 train_y <- as.matrix(oil_data$OilPeakRate)
-xgboost_model <- xgboost(params=list(verbosity=0, learning_rate=0.1, objective="reg:squarederror", 
-                                     eval_metric = "rmse"),
-                         data=as.matrix(oil_data[,-17]), label=as.matrix(oil_data[,17]),
-                         nrounds=35)
+cv <- xgb.cv(params=list(verbosity=0, learning_rate=0.2, objective="reg:squarederror", eval_metric = "rmse"),
+             data = train_X, label=train_y, nrounds = 60, nfold = 5, metrics = list("rmse"))
+print(cv)
+```
+
+### Shap Values
+
+```{r}
+xg_model <- xgboost(params=list(verbosity=0, learning_rate=0.2, objective="reg:squarederror", eval_metric = "rmse"),
+             data = train_X, label=train_y, nrounds = 60)
+shp <- shapviz(xg_model, X_pred = train_X, X = train_X, baseline = 0)
+sv_importance(shp, kind = "beeswarm") & theme_bw()
 ```
 
