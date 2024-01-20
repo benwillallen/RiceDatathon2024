@@ -79,6 +79,10 @@ cor(test$frac_fluid_to_proppant_ratio, test$proppant_to_frac_fluid_ratio)
 ```
 
 ```{r}
-ggplot(data=oil_data, mapping=aes(x=surface_x, y=surface_y, color=standardized_operator_name))
+ggplot(data=oil_data, mapping=aes(x=surface_x, y=surface_y, color=standardized_operator_name)) +
+  geom_point() + scale_color_distiller(palette = "Spectral")
+
+ggplot(data=oil_data, mapping=aes(x=surface_x, y=surface_y, color=OilPeakRate)) +
+  geom_point() + scale_color_distiller(palette = "Spectral")
 ```
 
