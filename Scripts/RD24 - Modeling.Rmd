@@ -1,0 +1,37 @@
+---
+title: "RD24 - Modeling"
+author: "Benjamin Allen"
+date: '`r Sys.Date()`'
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(xgboost)
+library(randomForest)
+library(ModelMetrics)
+library(fastshap)
+library(shapviz)
+library(patchwork)
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Importing Data
+
+```{r}
+oil_data <- read_csv("../Data/cleaned_training.csv")
+```
+
+## Preprocessing
+
+
+
+## XGBoost Model
+
+```{r}
+xgboost_model <- xgboost(params=list(verbosity=0, learning_rate=0.1, objective="reg:squarederror", 
+                                     eval_metric = "rmse"),
+                         data=as.matrix(oil_data[,-17]), label=as.matrix(oil_data[,17]),
+                         nrounds=35)
+```
+
