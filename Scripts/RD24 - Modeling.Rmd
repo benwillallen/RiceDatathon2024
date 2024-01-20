@@ -29,6 +29,8 @@ oil_data <- read_csv("../Data/cleaned_training.csv")
 ## XGBoost Model
 
 ```{r}
+train_X <- as.matrix(oil_data[,-17])
+train_y <- as.matrix(oil_data$OilPeakRate)
 xgboost_model <- xgboost(params=list(verbosity=0, learning_rate=0.1, objective="reg:squarederror", 
                                      eval_metric = "rmse"),
                          data=as.matrix(oil_data[,-17]), label=as.matrix(oil_data[,17]),
