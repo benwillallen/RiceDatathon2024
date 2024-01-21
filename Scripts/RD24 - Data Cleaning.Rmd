@@ -32,7 +32,7 @@ oil_data <- crude_data %>%
   # Remove frac_type as it is the same for all rows and the id variables
   # Remove frac_fluid_proppant_ratio as the inverse ratio is also in the dataset
   select(-c(bh_x, bh_y, horizontal_midpoint_x, horizontal_midpoint_y, horizontal_toe_x, horizontal_toe_y,
-            frac_type, ...1, pad_id, frac_fluid_to_proppant_ratio))
+            frac_type, pad_id, frac_fluid_to_proppant_ratio))
 
 ```
 
@@ -42,20 +42,17 @@ oil_data <- crude_data %>%
 Imputation is done using the MICE (Multiple Imputation by Chained Equations) approach as this is a well-proven technique for doing imputation for multiple columns.
 
 ```{r}
-imputation_epoch1 <- mice(oil_data, m=5, method="rf", maxit=5, seed=24)
+imputation_epoch1 <- mice(oil_data, m=5, method="rf", maxit=2, seed=24)
 imputed_data <- complete(imputation_epoch1, 1)
 imputed_data$ffs_frac_type <- ifelse(is.na(imputed_data$ffs_frac_type), "Unknown", imputed_data$ffs_frac_type)
-
-imputation_epoch1$loggedEvents
 
 # Check no more missing values
 as.data.frame(sapply(imputed_data, function(y) sum(is.na(y))))
 
-
 # Finally need to remove rows that are missing the response
-imputed_data <- cbind(imputed_data, crude_data$OilPeakRate)
-colnames(imputed_data) <- c(colnames(imputed_data)[1:length(imputed_data)-1], "OilPeakRate")
-imputed_data <- imputed_data %>% 
+imputed_data <- crude_data %>% 
+  select(...1, `OilPeakRate`) %>% 
+  inner_join(imputed_data) %>% 
   filter(!is.na(OilPeakRate)) # Remove rows where response is missing
 ```
 
@@ -73,26 +70,18 @@ imputed_data <- imputed_data %>%
 
 ```{r}
 write_csv(imputed_data, "../Data/cleaned_training.csv")
+imputed_data <- read_csv("../Data/cleaned_training.csv")
 ```
 
 ## Preprocessing
 
 ```{r}
-lin_model <- glm(formula=OilPeakRate~., data=imputed_data[train_test_split,])
-lin_preds <- predict(lin_model, newdata=imputed_data[-train_test_split,])
-sqrt(mean((lin_preds-imputed_data$OilPeakRate[-train_test_split])^2))
 refined_data <- imputed_data %>%
-  group_by(standardized_operator_name) %>% 
-  summarise(avg_peak_rate = mean(OilPeakRate)) %>% 
-  inner_join(imputed_data) %>% 
-  select(-c(standardized_operator_name, OilPeakRate)) %>% 
   mutate(value = 1) %>% spread(ffs_frac_type, value,  fill = 0) %>% # One-Hot Encoding
   mutate(value = 1) %>% spread(relative_well_position, value,  fill = 0) %>% 
   mutate(value = 1) %>% spread(batch_frac_classification, value,  fill = 0) %>% 
-  mutate(value = 1) %>% spread(well_family_relationship, value,  fill = 0)
-
-refined_data <- cbind(refined_data, imputed_data$OilPeakRate)
-colnames(refined_data) <- c(colnames(refined_data)[1:length(refined_data)-1], "OilPeakRate")
+  mutate(value = 1) %>% spread(well_family_relationship, value,  fill = 0) %>% 
+  select(-...1)
 ```
 
 ## Exporting Preprocessed CSV
