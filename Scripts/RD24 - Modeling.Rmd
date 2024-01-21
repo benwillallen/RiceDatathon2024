@@ -23,7 +23,8 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r}
 set.seed(24)
 oil_data <- read_csv("../Data/preprocessed_training.csv")
-oil_data <- refined_data
+oil_data <- oil_data %>% 
+  select(-c(total_fluid, proppant_to_frac_fluid_ratio, frac_seasoning, total_proppant, gross_perforated_length))
 train_test_split <- sample(1:nrow(oil_data), size=0.8*nrow(oil_data))
 oil_data_test <- oil_data[-train_test_split,]
 oil_data <- oil_data[train_test_split,]
@@ -33,11 +34,11 @@ oil_data <- oil_data[train_test_split,]
 
 ```{r}
 set.seed(24)
-train_X <- as.matrix(oil_data[,-length(oil_data)])
+train_X <- as.matrix(oil_data[,-1])
 train_y <- as.matrix(oil_data$OilPeakRate)
 cv <- xgb.cv(params=list(verbosity=0, learning_rate=0.1, objective="reg:squarederror", eval_metric = "rmse",
-                         max_depth=8, subsample=0.5, colsample_bytree=0.75, lambda=1, alpha=10),
-             data = train_X, label=train_y, nrounds = 50, nfold = 10, metrics = list("rmse", "mape", "mae"))
+                         max_depth=10, subsample=1, colsample_bytree=0.5, lambda=0.5, alpha=1),
+             data = train_X, label=train_y, nrounds = 150, nfold = 10, metrics = list("rmse", "mape", "mae"))
 rmse_plot <- ggplot(data=cv$evaluation_log, mapping=aes(x=iter)) +
   geom_line(mapping=aes(y=train_rmse_mean, color="Training"), linewidth=2) +
   geom_line(mapping=aes(y=test_rmse_mean, color="Testing"), linewidth=2) +
@@ -58,23 +59,23 @@ print(cv)
 ```
 
 ```{r}
-xg_model <- xgboost(params=list(learning_rate=0.1, objective="reg:squarederror", eval_metric = "rmse",
-                         max_depth=8, subsample=0.5, colsample_bytree=0.75, lambda=1, alpha=10),
-             data = train_X, label=train_y, nrounds = 20)
+xg_model <- xgboost(params=list(verbosity=0, learning_rate=0.1, objective="reg:squarederror", eval_metric = "rmse",
+                         max_depth=10, subsample=1, colsample_bytree=0.5, lambda=0.5, alpha=1),
+             data = train_X, label=train_y, nrounds = 80)
 ```
 
 ### Upper and Lower Models
 
 ```{r}
 small_oil_data <- oil_data %>% 
-  filter(OilPeakRate < quantile(oil_data$OilPeakRate, 0.25))
+  filter(OilPeakRate < quantile(oil_data$OilPeakRate, 0.50))
 
 set.seed(24)
-train_X <- as.matrix(small_oil_data[,-length(oil_data)])
+train_X <- as.matrix(small_oil_data[,-1])
 train_y <- as.matrix(small_oil_data$OilPeakRate)
-cv <- xgb.cv(params=list(learning_rate=0.1, objective="reg:squarederror", eval_metric = "rmse",
-                         max_depth=4, subsample=0.5, colsample_bytree=0.75, lambda=1, alpha=10),
-             data = train_X, label=train_y, nrounds = 50, nfold = 10, metrics = list("rmse", "mape", "mae"))
+cv <- xgb.cv(params=list(verbosity=0, learning_rate=0.1, objective="reg:squarederror", eval_metric = "rmse",
+                         max_depth=8, subsample=1, colsample_bytree=0.5, lambda=0.5, alpha=1),
+             data = train_X, label=train_y, nrounds = 30, nfold = 10, metrics = list("rmse", "mape", "mae"))
 rmse_plot <- ggplot(data=cv$evaluation_log, mapping=aes(x=iter)) +
   geom_line(mapping=aes(y=train_rmse_mean, color="Training"), linewidth=2) +
   geom_line(mapping=aes(y=test_rmse_mean, color="Testing"), linewidth=2) +
@@ -95,22 +96,22 @@ print(cv)
 ```
 
 ```{r}
-small_xg_model <- xgboost(params=list(learning_rate=0.1, objective="reg:squarederror", eval_metric = "rmse",
-                         max_depth=8, subsample=0.5, colsample_bytree=0.75, lambda=1, alpha=10),
-                         data = train_X, label=train_y, nrounds = 30)
+small_xg_model <- xgboost(params=list(verbosity=0, learning_rate=0.1, objective="reg:squarederror",
+                                      eval_metric = "rmse", max_depth=8, subsample=1, colsample_bytree=0.5,
+                                      lambda=0.5, alpha=1),
+                         data = train_X, label=train_y, nrounds = 60)
 ```
-
 
 ```{r}
 large_oil_data <- oil_data %>% 
-  filter(OilPeakRate > quantile(oil_data$OilPeakRate, 0.25))
+  filter(OilPeakRate > quantile(oil_data$OilPeakRate, 0.5))
 
 set.seed(24)
-train_X <- as.matrix(large_oil_data[,-length(oil_data)])
+train_X <- as.matrix(large_oil_data[,-1])
 train_y <- as.matrix(large_oil_data$OilPeakRate)
-cv <- xgb.cv(params=list(learning_rate=0.1, objective="reg:squarederror", eval_metric = "rmse",
-                         max_depth=8, subsample=0.5, colsample_bytree=0.75, lambda=1, alpha=10),
-             data = train_X, label=train_y, nrounds = 50, nfold = 10, metrics = list("rmse", "mape", "mae"))
+cv <- xgb.cv(params=list(verbosity=0, learning_rate=0.1, objective="reg:squarederror", eval_metric = "rmse",
+                         max_depth=8, subsample=1, colsample_bytree=0.5, lambda=0.5, alpha=1),
+             data = train_X, label=train_y, nrounds = 100, nfold = 10, metrics = list("rmse", "mape", "mae"))
 rmse_plot <- ggplot(data=cv$evaluation_log, mapping=aes(x=iter)) +
   geom_line(mapping=aes(y=train_rmse_mean, color="Training"), linewidth=2) +
   geom_line(mapping=aes(y=test_rmse_mean, color="Testing"), linewidth=2) +
@@ -131,22 +132,60 @@ print(cv)
 ```
 
 ```{r}
-large_xg_model <- xgboost(params=list(learning_rate=0.1, objective="reg:squarederror", eval_metric = "rmse",
-                         max_depth=8, subsample=0.5, colsample_bytree=0.75, lambda=1, alpha=10),
-                         data = train_X, label=train_y, nrounds = 40)
+large_xg_model <- xgboost(params=list(verbosity=0, learning_rate=0.1, objective="reg:squarederror",
+                                      eval_metric = "rmse", max_depth=8, subsample=1, colsample_bytree=0.5,
+                                      lambda=0.5, alpha=1),
+                         data = train_X, label=train_y, nrounds = 70)
 ```
 
+```{r}
+larger_oil_data <- oil_data %>% 
+  filter(OilPeakRate > quantile(oil_data$OilPeakRate, 0.9))
+
+set.seed(24)
+train_X <- as.matrix(larger_oil_data[,-1])
+train_y <- as.matrix(larger_oil_data$OilPeakRate)
+cv <- xgb.cv(params=list(verbosity=0, learning_rate=0.1, objective="reg:squarederror", eval_metric = "rmse",
+                         max_depth=8, subsample=1, colsample_bytree=0.5, lambda=0.5, alpha=1),
+             data = train_X, label=train_y, nrounds = 100, nfold = 10, metrics = list("rmse", "mape", "mae"))
+rmse_plot <- ggplot(data=cv$evaluation_log, mapping=aes(x=iter)) +
+  geom_line(mapping=aes(y=train_rmse_mean, color="Training"), linewidth=2) +
+  geom_line(mapping=aes(y=test_rmse_mean, color="Testing"), linewidth=2) +
+  theme_bw() + labs(title="XGBoost RMSE by Iteration", x="Iteration", y="RMSE") +
+  scale_color_discrete(name="")
+mape_plot <- ggplot(data=cv$evaluation_log, mapping=aes(x=iter)) +
+  geom_line(mapping=aes(y=train_mape_mean, color="Training"), linewidth=2) +
+  geom_line(mapping=aes(y=test_mape_mean, color="Testing"), linewidth=2) +
+  theme_bw() + labs(title="XGBoost MAPE by Iteration", x="Iteration", y="MAPE") +
+  scale_color_discrete(name="")
+mae_plot <- ggplot(data=cv$evaluation_log, mapping=aes(x=iter)) +
+  geom_line(mapping=aes(y=train_mae_mean, color="Training"), linewidth=2) +
+  geom_line(mapping=aes(y=test_mae_mean, color="Testing"), linewidth=2) +
+  theme_bw() + labs(title="XGBoost MAE by Iteration", x="Iteration", y="MAPE") +
+  scale_color_discrete(name="")
+rmse_plot + mape_plot + mae_plot
+print(cv)
+```
+
+```{r}
+larger_xg_model <- xgboost(params=list(verbosity=0, learning_rate=0.1, objective="reg:squarederror",
+                                      eval_metric = "rmse", max_depth=8, subsample=1, colsample_bytree=0.5,
+                                      lambda=0.5, alpha=1),
+                         data = train_X, label=train_y, nrounds = 40)
+```
 
 ## Combining Results
 
 ```{r}
 # Results on Test Set
-test_X <- as.matrix(oil_data_test[,-length(oil_data_test)])
-test_y <- as.matrix(oil_data_test[,length(oil_data_test)])
+test_X <- as.matrix(oil_data_test[,-1])
+test_y <- as.matrix(oil_data_test[,1])
 xg_preds <- predict(xg_model, newdata=test_X)
 small_xg_preds <- predict(small_xg_model, newdata=test_X)
 large_xg_preds <- predict(large_xg_model, newdata=test_X)
-preds_df <- as_tibble(cbind(xg_preds, small_xg_preds, large_xg_preds, lin_preds))
+larger_xg_preds <- predict(larger_xg_model, newdata=test_X)
+mid_xg_preds <- predict(mid_xg_model, newdata=test_X)
+preds_df <- as_tibble(cbind(xg_preds, small_xg_preds, large_xg_preds, larger_xg_preds))
 preds_df <- cbind(preds_df, oil_data_test$OilPeakRate)
 colnames(preds_df) <- c(colnames(preds_df)[1:length(preds_df)-1], "OilPeakRate")
 
@@ -154,9 +193,9 @@ colnames(preds_df) <- c(colnames(preds_df)[1:length(preds_df)-1], "OilPeakRate")
 set.seed(24)
 preds_X <- as.matrix(preds_df[,-length(preds_df)])
 preds_y <- as.matrix(preds_df[,length(preds_df)])
-cv <- xgb.cv(params=list(learning_rate=0.1, objective="reg:squarederror", eval_metric = "rmse",
-                         max_depth=2, subsample=0.5, colsample_bytree=0.75, lambda=1, alpha=10),
-             data = preds_X, label=preds_y, nrounds = 50, nfold = 10, metrics = list("rmse", "mape", "mae"))
+cv <- xgb.cv(params=list(learning_rate=0.05, objective="reg:squarederror", eval_metric = "rmse",
+                         max_depth=2, subsample=0.5, colsample_bytree=0.75, lambda=1, alpha=1),
+             data = preds_X, label=preds_y, nrounds = 100, nfold = 10, metrics = list("rmse", "mape", "mae"))
 rmse_plot <- ggplot(data=cv$evaluation_log, mapping=aes(x=iter)) +
   geom_line(mapping=aes(y=train_rmse_mean, color="Training"), linewidth=2) +
   geom_line(mapping=aes(y=test_rmse_mean, color="Testing"), linewidth=2) +
@@ -175,10 +214,11 @@ mae_plot <- ggplot(data=cv$evaluation_log, mapping=aes(x=iter)) +
 rmse_plot + mape_plot + mae_plot
 print(cv)
 
-voter_xg_model <- xgboost(params=list(learning_rate=0.1, objective="reg:squarederror", eval_metric = "rmse",
+voter_xg_model <- xgboost(params=list(learning_rate=0.05, objective="reg:squarederror", eval_metric = "rmse",
                          max_depth=2, subsample=0.5, colsample_bytree=0.75, lambda=1, alpha=10),
-                         data = preds_X, label=preds_y, nrounds = 40)
+                         data = preds_X, label=preds_y, nrounds = 70)
 ```
+
 
 ```{r}
 voted_preds <- predict(voter_xg_model, newdata=preds_X)
@@ -186,15 +226,16 @@ voted_preds <- predict(voter_xg_model, newdata=preds_X)
 sqrt(mean((preds_df$xg_preds - preds_df$OilPeakRate)^2))
 sqrt(mean((preds_df$small_xg_preds - preds_df$OilPeakRate)^2))
 sqrt(mean((preds_df$large_xg_preds - preds_df$OilPeakRate)^2))
-sqrt(mean((preds_df$lin_preds - preds_df$OilPeakRate)^2))
+sqrt(mean((preds_df$larger_xg_preds - preds_df$OilPeakRate)^2))
 sqrt(mean((voted_preds - preds_df$OilPeakRate)^2))
 
 ggplot(data=preds_df) +
   geom_density(alpha=0.5, mapping=aes(x=OilPeakRate, color="actual")) +
+  geom_density(alpha=0.5, mapping=aes(x=small_xg_preds, color="small")) +
   geom_density(alpha=0.5, mapping=aes(x=large_xg_preds, color="large")) +
+  geom_density(alpha=0.5, mapping=aes(x=larger_xg_preds, color="larger")) +
   geom_density(alpha=0.5, mapping=aes(x=xg_preds, color="all")) +
-  geom_density(alpha=0.5, mapping=aes(x=voted_preds, color="voted")) +
-  geom_density(alpha=0.5, mapping=aes(x=lin_preds, color="linear"))
+  geom_density(alpha=0.5, mapping=aes(x=voted_preds, color="voted"))
 ```
 
 ```{r}
@@ -204,6 +245,14 @@ shp <- shapviz(explanation, X=preds_X, baseline=mean(preds_y))
 sv_importance(shp, kind = "beeswarm") & theme_bw() 
 ```
 
+
+```{r}
+explanation <- fastshap::explain(small_xg_model, X = train_X, pred_wrapper = predict,
+                                 newdata = test_X, exact=F, nsim=20)
+shp <- shapviz(explanation, X=test_X, baseline=mean(preds_y))
+sv_importance(shp, kind = "beeswarm") & theme_bw() 
+sv_importance(shp, kind = "no")
+```
 
 ```{r}
 # Understanding Location Relationship in Model

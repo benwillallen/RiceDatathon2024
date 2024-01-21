@@ -77,6 +77,14 @@ imputed_data <- read_csv("../Data/cleaned_training.csv")
 
 ```{r}
 refined_data <- imputed_data %>%
+  mutate(ffs_frac_type = ifelse(ffs_frac_type == "Unknown",
+                                         "Unknown - FFS", relative_well_position)) %>% 
+  mutate(relative_well_position = ifelse(relative_well_position == "Unknown",
+                                         "Unknown - RWP", relative_well_position)) %>% 
+  mutate(batch_frac_classification = ifelse(batch_frac_classification == "Unknown",
+                                         "Unknown - BFC", batch_frac_classification)) %>% 
+  mutate(well_family_relationship = ifelse(well_family_relationship == "Unknown",
+                                         "Unknown - WFR", well_family_relationship)) %>% 
   mutate(value = 1) %>% spread(ffs_frac_type, value,  fill = 0) %>% # One-Hot Encoding
   mutate(value = 1) %>% spread(relative_well_position, value,  fill = 0) %>% 
   mutate(value = 1) %>% spread(batch_frac_classification, value,  fill = 0) %>% 
