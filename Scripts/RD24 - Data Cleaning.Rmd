@@ -73,12 +73,14 @@ imputed_data <- imputed_data %>%
 
 ```{r}
 write_csv(imputed_data, "../Data/cleaned_training.csv")
-
 ```
 
 ## Preprocessing
 
 ```{r}
+lin_model <- glm(formula=OilPeakRate~., data=imputed_data[train_test_split,])
+lin_preds <- predict(lin_model, newdata=imputed_data[-train_test_split,])
+sqrt(mean((lin_preds-imputed_data$OilPeakRate[-train_test_split])^2))
 refined_data <- imputed_data %>%
   group_by(standardized_operator_name) %>% 
   summarise(avg_peak_rate = mean(OilPeakRate)) %>% 
@@ -87,10 +89,10 @@ refined_data <- imputed_data %>%
   mutate(value = 1) %>% spread(ffs_frac_type, value,  fill = 0) %>% # One-Hot Encoding
   mutate(value = 1) %>% spread(relative_well_position, value,  fill = 0) %>% 
   mutate(value = 1) %>% spread(batch_frac_classification, value,  fill = 0) %>% 
-  mutate(value = 1) %>% spread(well_family_relationship, value,  fill = 0) %>% 
-  mutate(across(everything(), ~(.x - mean(.x)) / sd(.x)))
+  mutate(value = 1) %>% spread(well_family_relationship, value,  fill = 0)
 
 refined_data <- cbind(refined_data, imputed_data$OilPeakRate)
+colnames(refined_data) <- c(colnames(refined_data)[1:length(refined_data)-1], "OilPeakRate")
 ```
 
 ## Exporting Preprocessed CSV

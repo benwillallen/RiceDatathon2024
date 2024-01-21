@@ -14,31 +14,196 @@ library(fastshap)
 library(shapviz)
 library(patchwork)
 library(caret)
+library(modelr)
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ## Importing Data
 
 ```{r}
+set.seed(24)
 oil_data <- read_csv("../Data/preprocessed_training.csv")
+oil_data <- refined_data
+train_test_split <- sample(1:nrow(oil_data), size=0.8*nrow(oil_data))
+oil_data_test <- oil_data[-train_test_split,]
+oil_data <- oil_data[train_test_split,]
 ```
 
 ## XGBoost Model
 
 ```{r}
-train_X <- as.matrix(oil_data[,-16])
+set.seed(24)
+train_X <- as.matrix(oil_data[,-length(oil_data)])
 train_y <- as.matrix(oil_data$OilPeakRate)
-cv <- xgb.cv(params=list(verbosity=0, learning_rate=0.2, objective="reg:squarederror", eval_metric = "rmse"),
-             data = train_X, label=train_y, nrounds = 60, nfold = 5, metrics = list("rmse"))
+cv <- xgb.cv(params=list(verbosity=0, learning_rate=0.1, objective="reg:squarederror", eval_metric = "rmse",
+                         max_depth=8, subsample=0.5, colsample_bytree=0.75, lambda=1, alpha=10),
+             data = train_X, label=train_y, nrounds = 50, nfold = 10, metrics = list("rmse", "mape", "mae"))
+rmse_plot <- ggplot(data=cv$evaluation_log, mapping=aes(x=iter)) +
+  geom_line(mapping=aes(y=train_rmse_mean, color="Training"), linewidth=2) +
+  geom_line(mapping=aes(y=test_rmse_mean, color="Testing"), linewidth=2) +
+  theme_bw() + labs(title="XGBoost RMSE by Iteration", x="Iteration", y="RMSE") +
+  scale_color_discrete(name="")
+mape_plot <- ggplot(data=cv$evaluation_log, mapping=aes(x=iter)) +
+  geom_line(mapping=aes(y=train_mape_mean, color="Training"), linewidth=2) +
+  geom_line(mapping=aes(y=test_mape_mean, color="Testing"), linewidth=2) +
+  theme_bw() + labs(title="XGBoost MAPE by Iteration", x="Iteration", y="MAPE") +
+  scale_color_discrete(name="")
+mae_plot <- ggplot(data=cv$evaluation_log, mapping=aes(x=iter)) +
+  geom_line(mapping=aes(y=train_mae_mean, color="Training"), linewidth=2) +
+  geom_line(mapping=aes(y=test_mae_mean, color="Testing"), linewidth=2) +
+  theme_bw() + labs(title="XGBoost MAE by Iteration", x="Iteration", y="MAPE") +
+  scale_color_discrete(name="")
+rmse_plot + mape_plot + mae_plot
 print(cv)
 ```
 
-### Shap Values
-
 ```{r}
 xg_model <- xgboost(params=list(verbosity=0, learning_rate=0.2, objective="reg:squarederror", eval_metric = "rmse"),
-             data = train_X, label=train_y, nrounds = 60)
-shp <- shapviz(xg_model, X_pred = train_X, X = train_X, baseline = 0)
-sv_importance(shp, kind = "beeswarm") & theme_bw()
+             data = train_X, label=train_y, nrounds = 20)
 ```
 
+### Upper and Lower Models
+
+```{r}
+small_oil_data <- oil_data %>% 
+  filter(OilPeakRate < quantile(oil_data$OilPeakRate, 0.25))
+
+set.seed(24)
+train_X <- as.matrix(small_oil_data[,-length(oil_data)])
+train_y <- as.matrix(small_oil_data$OilPeakRate)
+cv <- xgb.cv(params=list(verbosity=0, learning_rate=0.2, objective="reg:squarederror", eval_metric = "rmse"),
+             data = train_X, label=train_y, nrounds = 100, nfold = 10, metrics = list("rmse", "mape", "mae"))
+rmse_plot <- ggplot(data=cv$evaluation_log, mapping=aes(x=iter)) +
+  geom_line(mapping=aes(y=train_rmse_mean, color="Training"), linewidth=2) +
+  geom_line(mapping=aes(y=test_rmse_mean, color="Testing"), linewidth=2) +
+  theme_bw() + labs(title="XGBoost RMSE by Iteration", x="Iteration", y="RMSE") +
+  scale_color_discrete(name="")
+mape_plot <- ggplot(data=cv$evaluation_log, mapping=aes(x=iter)) +
+  geom_line(mapping=aes(y=train_mape_mean, color="Training"), linewidth=2) +
+  geom_line(mapping=aes(y=test_mape_mean, color="Testing"), linewidth=2) +
+  theme_bw() + labs(title="XGBoost MAPE by Iteration", x="Iteration", y="MAPE") +
+  scale_color_discrete(name="")
+mae_plot <- ggplot(data=cv$evaluation_log, mapping=aes(x=iter)) +
+  geom_line(mapping=aes(y=train_mae_mean, color="Training"), linewidth=2) +
+  geom_line(mapping=aes(y=test_mae_mean, color="Testing"), linewidth=2) +
+  theme_bw() + labs(title="XGBoost MAE by Iteration", x="Iteration", y="MAPE") +
+  scale_color_discrete(name="")
+rmse_plot + mape_plot + mae_plot
+print(cv)
+```
+
+```{r}
+small_xg_model <- xgboost(params=list(verbosity=0, learning_rate=0.2, objective="reg:squarederror",
+                                      eval_metric = "rmse"), data = train_X, label=train_y, nrounds = 20)
+```
+
+
+```{r}
+large_oil_data <- oil_data %>% 
+  filter(OilPeakRate > quantile(oil_data$OilPeakRate, 0.25))
+
+set.seed(24)
+train_X <- as.matrix(large_oil_data[,-length(oil_data)])
+train_y <- as.matrix(large_oil_data$OilPeakRate)
+cv <- xgb.cv(params=list(verbosity=0, learning_rate=0.1, objective="reg:squarederror", eval_metric = "rmse"),
+             data = train_X, label=train_y, nrounds = 100, nfold = 10, metrics = list("rmse", "mape", "mae"))
+rmse_plot <- ggplot(data=cv$evaluation_log, mapping=aes(x=iter)) +
+  geom_line(mapping=aes(y=train_rmse_mean, color="Training"), linewidth=2) +
+  geom_line(mapping=aes(y=test_rmse_mean, color="Testing"), linewidth=2) +
+  theme_bw() + labs(title="XGBoost RMSE by Iteration", x="Iteration", y="RMSE") +
+  scale_color_discrete(name="")
+mape_plot <- ggplot(data=cv$evaluation_log, mapping=aes(x=iter)) +
+  geom_line(mapping=aes(y=train_mape_mean, color="Training"), linewidth=2) +
+  geom_line(mapping=aes(y=test_mape_mean, color="Testing"), linewidth=2) +
+  theme_bw() + labs(title="XGBoost MAPE by Iteration", x="Iteration", y="MAPE") +
+  scale_color_discrete(name="")
+mae_plot <- ggplot(data=cv$evaluation_log, mapping=aes(x=iter)) +
+  geom_line(mapping=aes(y=train_mae_mean, color="Training"), linewidth=2) +
+  geom_line(mapping=aes(y=test_mae_mean, color="Testing"), linewidth=2) +
+  theme_bw() + labs(title="XGBoost MAE by Iteration", x="Iteration", y="MAPE") +
+  scale_color_discrete(name="")
+rmse_plot + mape_plot + mae_plot
+print(cv)
+```
+
+```{r}
+large_xg_model <- xgboost(params=list(verbosity=0, learning_rate=0.2, objective="reg:squarederror",
+                                      eval_metric = "rmse"), data = train_X, label=train_y, nrounds = 20)
+```
+
+## Combining Results
+
+```{r}
+# Results on Test Set
+test_X <- as.matrix(oil_data_test[,-length(oil_data_test)])
+test_y <- as.matrix(oil_data_test[,length(oil_data_test)])
+xg_preds <- predict(xg_model, newdata=test_X)
+small_xg_preds <- predict(small_xg_model, newdata=test_X)
+large_xg_preds <- predict(large_xg_model, newdata=test_X)
+preds_df <- as_tibble(cbind(xg_preds, small_xg_preds, large_xg_preds))
+preds_df <- cbind(preds_df, test_y)
+
+# Second Approach: add a model to choose which predictions are best
+set.seed(24)
+preds_X <- as.matrix(preds_df[,-4])
+preds_y <- as.matrix(preds_df[,4])
+cv <- xgb.cv(params=list(verbosity=0, learning_rate=0.1, objective="reg:squarederror", eval_metric = "rmse"),
+             data = preds_X, label=preds_y, nrounds = 70, nfold = 10, metrics = list("rmse", "mape", "mae"))
+rmse_plot <- ggplot(data=cv$evaluation_log, mapping=aes(x=iter)) +
+  geom_line(mapping=aes(y=train_rmse_mean, color="Training"), linewidth=2) +
+  geom_line(mapping=aes(y=test_rmse_mean, color="Testing"), linewidth=2) +
+  theme_bw() + labs(title="XGBoost RMSE by Iteration", x="Iteration", y="RMSE") +
+  scale_color_discrete(name="")
+mape_plot <- ggplot(data=cv$evaluation_log, mapping=aes(x=iter)) +
+  geom_line(mapping=aes(y=train_mape_mean, color="Training"), linewidth=2) +
+  geom_line(mapping=aes(y=test_mape_mean, color="Testing"), linewidth=2) +
+  theme_bw() + labs(title="XGBoost MAPE by Iteration", x="Iteration", y="MAPE") +
+  scale_color_discrete(name="")
+mae_plot <- ggplot(data=cv$evaluation_log, mapping=aes(x=iter)) +
+  geom_line(mapping=aes(y=train_mae_mean, color="Training"), linewidth=2) +
+  geom_line(mapping=aes(y=test_mae_mean, color="Testing"), linewidth=2) +
+  theme_bw() + labs(title="XGBoost MAE by Iteration", x="Iteration", y="MAPE") +
+  scale_color_discrete(name="")
+rmse_plot + mape_plot + mae_plot
+print(cv)
+
+voter_xg_model <- xgboost(params=list(verbosity=0, learning_rate=0.1, objective="reg:squarederror",
+                                      eval_metric = "rmse"), data = preds_X, label=preds_y, nrounds = 20)
+```
+
+```{r}
+voted_preds <- predict(voter_xg_model, newdata=preds_X)
+
+sqrt(mean((preds_df$xg_preds - preds_df$OilPeakRate)^2))
+sqrt(mean((preds_df$small_xg_preds - preds_df$OilPeakRate)^2))
+sqrt(mean((preds_df$large_xg_preds - preds_df$OilPeakRate)^2))
+sqrt(mean((voted_preds - preds_df$OilPeakRate)^2))
+ggplot(data=preds_df) +
+  geom_density(alpha=0.5, mapping=aes(x=OilPeakRate, color="actual")) +
+  geom_density(alpha=0.5, mapping=aes(x=small_xg_preds, color="small")) +
+  geom_density(alpha=0.5, mapping=aes(x=large_xg_preds, color="large")) +
+  geom_density(alpha=0.5, mapping=aes(x=xg_preds, color="all")) +
+  geom_density(alpha=0.5, mapping=aes(x=voted_preds, color="voted")) +
+  geom_density(alpha=0.5, mapping=aes(x=lin_preds, color="linear"))
+```
+
+```{r}
+explanation <- fastshap::explain(voter_xg_model, X = preds_X, pred_wrapper = predict,
+                                 newdata = preds_X, exact=F, nsim=20)
+shp <- shapviz(explanation, X=preds_X, baseline=mean(preds_y))
+sv_importance(shp, kind = "beeswarm") & theme_bw() 
+```
+
+
+```{r}
+# Understanding Location Relationship in Model
+shaps <- as_tibble(shp$S[,2:3])
+shaps <- shaps %>% 
+  mutate(combined_effect = surface_x + surface_y)
+ggplot(data=oil_data, mapping=aes(x=surface_x, y=surface_y, color=shaps$combined_effect)) +
+  geom_point() + scale_color_gradientn(colors=c("blue", "green", "yellow", "red")) +
+ggplot(data=oil_data, mapping=aes(x=surface_x, y=surface_y, color=OilPeakRate)) +
+  geom_point(alpha=0.5) + scale_color_gradientn(colors=c("blue", "green", "yellow", "red"))+
+ggplot(data=oil_data, mapping=aes(x=surface_x, y=surface_y, color=avg_peak_rate)) +
+  geom_point(alpha=0.5) + scale_color_gradientn(colors=c("blue", "green", "yellow", "red"))
+```
