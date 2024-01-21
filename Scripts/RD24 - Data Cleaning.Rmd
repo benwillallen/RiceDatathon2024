@@ -24,7 +24,7 @@ crude_data <- read_csv("../Data/training.csv")
 oil_data <- crude_data %>% 
   select(-OilPeakRate) %>% # Remove response temporarily to avoid data leakage
   select(-c(average_frac_fluid_per_stage, average_stage_length,
-            average_proppant_per_stage)) %>% # Remove columns with >90% missing rows
+            average_proppant_per_stage, number_of_stages)) %>% # Remove columns with >90% missing rows
   mutate(horizontal_dist_x = abs(horizontal_midpoint_x - horizontal_toe_x),
          horizontal_dist_y = abs(horizontal_midpoint_y - horizontal_toe_y),
          horizontal_dist = sqrt((horizontal_midpoint_x - horizontal_toe_x)^2 + (horizontal_midpoint_y - horizontal_toe_y)^2)) %>% # Create horizontal distance variables
@@ -42,7 +42,7 @@ oil_data <- crude_data %>%
 Imputation is done using the MICE (Multiple Imputation by Chained Equations) approach as this is a well-proven technique for doing imputation for multiple columns.
 
 ```{r}
-imputation_epoch1 <- mice(oil_data, m=5, method="rf", maxit=2, seed=24)
+imputation_epoch1 <- mice(oil_data, m=1, method="rf", maxit=5, seed=24)
 imputed_data <- complete(imputation_epoch1, 1)
 imputed_data$ffs_frac_type <- ifelse(is.na(imputed_data$ffs_frac_type), "Unknown", imputed_data$ffs_frac_type)
 
