@@ -270,8 +270,9 @@ sv_importance(shp, kind = "beeswarm") & theme_bw()
 
 
 ```{r}
-explanation <- fastshap::explain(small_xg_model, X = train_X, pred_wrapper = predict,
+explanation <- fastshap::explain(large_xg_model, X = train_X, pred_wrapper = predict,
                                  newdata = test_X, exact=F, nsim=20)
 shp <- shapviz(explanation, X=test_X, baseline=mean(preds_y))
-sv_importance(shp, kind = "beeswarm") & theme_bw() 
+sv_importance(shp, kind = "beeswarm") & theme_bw() & labs(title="SHAP Feature Importance")
+ggsave("../Analysis/Visuals/shap_plot.png", width=1920, height=1080, units="px")
 ```
