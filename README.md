@@ -23,3 +23,5 @@ We learned a lot of new machine learning technologies such as XGBoost, Pytorch, 
 
 ## What's next for Frack Around and Find out
 We want to add more machine learning models into our combined XGBoost model to increase its accuracy. In addition, we would like to analyze further some of the features that were lacking from the original dataset such as the number of stages.
+
+solution from our model is solution.csv in the main directory
