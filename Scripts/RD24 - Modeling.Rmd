@@ -184,7 +184,6 @@ xg_preds <- predict(xg_model, newdata=test_X)
 small_xg_preds <- predict(small_xg_model, newdata=test_X)
 large_xg_preds <- predict(large_xg_model, newdata=test_X)
 larger_xg_preds <- predict(larger_xg_model, newdata=test_X)
-mid_xg_preds <- predict(mid_xg_model, newdata=test_X)
 preds_df <- as_tibble(cbind(xg_preds, small_xg_preds, large_xg_preds, larger_xg_preds))
 preds_df <- cbind(preds_df, oil_data_test$OilPeakRate)
 colnames(preds_df) <- c(colnames(preds_df)[1:length(preds_df)-1], "OilPeakRate")
@@ -230,12 +229,36 @@ sqrt(mean((preds_df$larger_xg_preds - preds_df$OilPeakRate)^2))
 sqrt(mean((voted_preds - preds_df$OilPeakRate)^2))
 
 ggplot(data=preds_df) +
-  geom_density(alpha=0.5, mapping=aes(x=OilPeakRate, color="actual")) +
-  geom_density(alpha=0.5, mapping=aes(x=small_xg_preds, color="small")) +
-  geom_density(alpha=0.5, mapping=aes(x=large_xg_preds, color="large")) +
-  geom_density(alpha=0.5, mapping=aes(x=larger_xg_preds, color="larger")) +
-  geom_density(alpha=0.5, mapping=aes(x=xg_preds, color="all")) +
-  geom_density(alpha=0.5, mapping=aes(x=voted_preds, color="voted"))
+  geom_density(alpha=0.5, mapping=aes(x=small_xg_preds, color="Small XGBoost"), linewidth=1) +
+  geom_density(alpha=0.5, mapping=aes(x=large_xg_preds, color="Large XGBoost"), linewidth=1) +
+  geom_density(alpha=0.5, mapping=aes(x=larger_xg_preds, color="Extreme XGBoost"), linewidth=1) +
+  geom_density(alpha=0.5, mapping=aes(x=xg_preds, color="General XGBoost"), linewidth=1) +
+  geom_density(alpha=0.5, mapping=aes(x=voted_preds, color="Combined Model"), linewidth=1) +
+  geom_density(alpha=0.5, mapping=aes(x=OilPeakRate, color="Actual Value"), linewidth=1.5) +
+  theme_dark() +
+  theme(plot.background = element_rect(fill = "#211A1E", color="#211A1E"),
+        panel.background = element_rect(fill = "#291f25"),
+        legend.background = element_rect(fill = "#211A1E"),
+        legend.key.height = unit(0.5, "cm"),
+        text = element_text(family="Bahnschrift", color="#fff0d5", size=16),
+        plot.title = element_text(size=30),
+        strip.text = element_text(color="#fff0d5", size=16)) +
+  labs(x="Oil Peak Rate", y="Density", title="Prediction Distributions") +
+  scale_color_discrete(name="Model")
+
+ggplot(data=preds_df) +
+  geom_density(alpha=0.5, mapping=aes(x=voted_preds, color="Combined Model"), linewidth=1) +
+  geom_density(alpha=0.5, mapping=aes(x=OilPeakRate, color="Actual Value"), linewidth=1.5) +
+  theme_dark() +
+  theme(plot.background = element_rect(fill = "#211A1E", color="#211A1E"),
+        panel.background = element_rect(fill = "#291f25"),
+        legend.background = element_rect(fill = "#211A1E"),
+        legend.key.height = unit(0.5, "cm"),
+        text = element_text(family="Bahnschrift", color="#fff0d5", size=16),
+        plot.title = element_text(size=30),
+        strip.text = element_text(color="#fff0d5", size=16)) +
+  labs(x="Oil Peak Rate", y="Density", title="Prediction Distribution") +
+  scale_color_discrete(name="Model")
 ```
 
 ```{r}
@@ -251,18 +274,4 @@ explanation <- fastshap::explain(small_xg_model, X = train_X, pred_wrapper = pre
                                  newdata = test_X, exact=F, nsim=20)
 shp <- shapviz(explanation, X=test_X, baseline=mean(preds_y))
 sv_importance(shp, kind = "beeswarm") & theme_bw() 
-sv_importance(shp, kind = "no")
-```
-
-```{r}
-# Understanding Location Relationship in Model
-shaps <- as_tibble(shp$S[,2:3])
-shaps <- shaps %>% 
-  mutate(combined_effect = surface_x + surface_y)
-ggplot(data=oil_data, mapping=aes(x=surface_x, y=surface_y, color=shaps$combined_effect)) +
-  geom_point() + scale_color_gradientn(colors=c("blue", "green", "yellow", "red")) +
-ggplot(data=oil_data, mapping=aes(x=surface_x, y=surface_y, color=OilPeakRate)) +
-  geom_point(alpha=0.5) + scale_color_gradientn(colors=c("blue", "green", "yellow", "red"))+
-ggplot(data=oil_data, mapping=aes(x=surface_x, y=surface_y, color=avg_peak_rate)) +
-  geom_point(alpha=0.5) + scale_color_gradientn(colors=c("blue", "green", "yellow", "red"))
 ```

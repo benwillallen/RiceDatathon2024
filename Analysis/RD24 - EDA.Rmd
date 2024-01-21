@@ -87,3 +87,35 @@ ggplot(data=oil_data, mapping=aes(x=surface_x, y=surface_y, color=ifelse(OilPeak
                                   alpha=ifelse(OilPeakRate>1000, 1, 0.01), size=ifelse(OilPeakRate>1000, 0.06, 0.05))) +
   geom_point()
 ```
+
+## Outlier Charts 
+
+```{r}
+ggplot(oil_data, mapping=aes(x=total_proppant, y=OilPeakRate, color=total_proppant, size=total_proppant)) +
+  geom_point() + theme_dark() + scale_color_gradient(name="Total Proppant", low="royalblue4", high="red") +
+  scale_size(name="Total Proppant") + theme(plot.background = element_rect(fill = "#211A1E", color="#211A1E"),
+        panel.background = element_rect(fill = "#291f25"),
+        legend.background = element_rect(fill = "#211A1E"),
+        legend.key.height = unit(0.5, "cm"),
+        text = element_text(family="Bahnschrift", color="#fff0d5", size=16),
+        plot.title = element_text(size=30),
+        strip.text = element_text(color="#fff0d5", size=16),
+        plot.margin = margin(25, 25, 25, 25)) +
+  labs(x="Total Proppant", y="Oil Peak Rate")
+ggsave("../Analysis/Visuals/outlier_proppant.png", width=1920, height=1080, units="px")
+```
+
+```{r}
+ggplot(oil_data, mapping=aes(x=total_fluid, y=OilPeakRate, color=total_proppant, size=total_proppant)) +
+  geom_point() + theme_dark() + scale_color_gradient(name="Total Proppant", low="royalblue4", high="red") +
+  scale_size(name="Total Proppant") + theme(plot.background = element_rect(fill = "#211A1E", color="#211A1E"),
+        panel.background = element_rect(fill = "#291f25"),
+        legend.background = element_rect(fill = "#211A1E"),
+        legend.key.height = unit(0.5, "cm"),
+        text = element_text(family="Bahnschrift", color="#fff0d5", size=16),
+        plot.title = element_text(size=30),
+        strip.text = element_text(color="#fff0d5", size=16),
+        plot.margin = margin(25, 25, 25, 25)) +
+  labs(x="Total Proppant", y="Oil Peak Rate")
+ggsave("../Analysis/Visuals/outlier_proppant.png", width=1920, height=1080, units="px")
+```
